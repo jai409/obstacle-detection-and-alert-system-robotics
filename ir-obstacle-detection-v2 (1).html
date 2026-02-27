@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IR Obstacle Detection & Alert System</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- Highlight.js -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/arduino.min.js"></script>
+
+<style>
+/* ─── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --bg:        #f8f6f2;
+  --bg2:       #f2efea;
+  --text:      #1e1e1e;
+  --muted:     #7a7268;
+  --light:     #c4bdb4;
+  --border:    #e2ddd7;
+  --accent:    #3a6b6b;
+  --accent-lt: #e8f0f0;
+  --accent-dk: #2b5050;
+  --serif:     'Cormorant Garamond', Georgia, serif;
+  --sans:      'Poppins', sans-serif;
+  --max:       1160px;
+}
+
+/* ─── RESET ──────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+img { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+
+/* ─── NAV ────────────────────────────────────────────────── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 200;
+  background: rgba(248, 246, 242, 0.92);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 2.5rem;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nav-logo {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+}
+.nav-links {
+  display: flex;
+  gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  transition: color 0.2s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute;
+  bottom: -2px; left: 0;
+  width: 0; height: 1px;
+  background: var(--accent);
+  transition: width 0.3s;
+}
+.nav-links a:hover { color: var(--accent); }
+.nav-links a:hover::after { width: 100%; }
+.nav-hamburger { display: none; background: none; border: none; cursor: pointer; padding: 4px; }
+.nav-hamburger span { display: block; width: 22px; height: 1.5px; background: var(--text); margin: 5px 0; transition: all 0.3s; }
+
+/* ─── UTILS ──────────────────────────────────────────────── */
+.container { max-width: var(--max); margin: 0 auto; padding: 0 2.5rem; }
+.section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+}
+.section-label::before {
+  content: '';
+  display: inline-block;
+  width: 28px; height: 1px;
+  background: var(--accent);
+}
+.section-title {
+  font-family: var(--serif);
+  font-size: clamp(2.2rem, 4vw, 3.4rem);
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+.section-title em { font-style: italic; color: var(--accent); }
+.hairline { border: none; border-top: 1px solid var(--border); }
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity 0.75s ease, transform 0.75s ease; }
+.reveal.visible { opacity: 1; transform: none; }
+
+/* ─── HERO ───────────────────────────────────────────────── */
+#hero {
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding-top: 64px;
+  position: relative;
+  overflow: hidden;
+}
+/* Subtle grid texture */
+#hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 80px 80px;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.hero-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 5rem 2.5rem 3rem;
+  max-width: var(--max);
+  margin: 0 auto;
+  width: 100%;
+  position: relative;
+}
+.hero-eyebrow {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: fadeUp 0.9s 0.1s both;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 40px; height: 1px;
+  background: var(--light);
+}
+.hero-heading {
+  font-family: var(--serif);
+  font-size: clamp(3.4rem, 8vw, 7.5rem);
+  font-weight: 600;
+  line-height: 1.0;
+  letter-spacing: -0.025em;
+  max-width: 900px;
+  animation: fadeUp 0.9s 0.22s both;
+}
+.hero-heading .accent { color: var(--accent); font-style: italic; }
+.hero-heading .thin { font-weight: 300; }
+
+.hero-sub-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 3rem;
+  margin-top: 3.5rem;
+  animation: fadeUp 0.9s 0.36s both;
+}
+.hero-subtitle {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  font-style: italic;
+  color: var(--muted);
+  font-weight: 300;
+}
+.hero-tagline {
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-left: 2px solid var(--accent);
+  padding-left: 1rem;
+  line-height: 1.8;
+  max-width: 280px;
+}
+.hero-tagline strong { color: var(--accent); display: block; }
+
+.hero-stats {
+  display: flex;
+  gap: 3rem;
+  padding: 2.5rem;
+  border-top: 1px solid var(--border);
+  background: rgba(255,255,255,0.45);
+  animation: fadeUp 0.9s 0.5s both;
+}
+.hero-stat { }
+.hero-stat-num {
+  font-family: var(--serif);
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--accent);
+  line-height: 1;
+}
+.hero-stat-lbl {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 0.3rem;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ─── OVERVIEW ──────────────────────────────────────────── */
+#overview { padding: 7rem 0; border-top: 1px solid var(--border); }
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5rem;
+  margin-top: 4rem;
+  align-items: start;
+}
+.overview-desc {
+  font-size: 1.05rem;
+  color: var(--muted);
+  line-height: 1.85;
+  font-weight: 300;
+}
+.overview-desc p + p { margin-top: 1.2rem; }
+.overview-desc strong { color: var(--text); font-weight: 500; }
+
+.tech-stack { }
+.tech-label-top {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.4rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.tech-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--border);
+  transition: padding-left 0.3s;
+}
+.tech-item:hover { padding-left: 0.5rem; }
+.tech-icon {
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent-lt);
+  color: var(--accent);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+.tech-name { font-size: 0.85rem; font-weight: 500; }
+.tech-desc { font-size: 0.72rem; color: var(--muted); }
+
+/* ─── COMPONENTS ────────────────────────────────────────── */
+#components { padding: 7rem 0; background: var(--bg2); }
+
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5px;
+  margin-top: 3.5rem;
+  background: var(--border);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.comp-card {
+  background: var(--bg);
+  padding: 2.2rem 1.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  transition: background 0.25s;
+  cursor: default;
+}
+.comp-card:hover { background: var(--accent-lt); }
+.comp-card-icon {
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+.comp-card-name { font-size: 0.9rem; font-weight: 600; line-height: 1.3; }
+.comp-card-detail { font-size: 0.72rem; color: var(--muted); }
+
+/* ─── CIRCUIT ───────────────────────────────────────────── */
+#circuit { padding: 7rem 0; }
+
+.circuit-visual {
+  margin-top: 3.5rem;
+  background: #1a1a1a;
+  border-radius: 4px;
+  padding: 3rem 2rem;
+  overflow-x: auto;
+  position: relative;
+}
+.circuit-inner {
+  min-width: 700px;
+  position: relative;
+  height: 480px;
+}
+.c-node {
+  position: absolute;
+  border-radius: 4px;
+  padding: 0.65rem 1rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.65rem;
+  text-align: center;
+  border: 1px solid #333;
+}
+.c-arduino {
+  background: #003a2e;
+  border: 1.5px solid #00c896;
+  color: #e0fff7;
+  width: 180px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  padding: 1rem;
+}
+.c-arduino-title {
+  font-size: 0.6rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #00c896;
+  border-bottom: 1px solid #005a45;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+.c-arduino-pin {
+  display: flex; justify-content: space-between;
+  font-size: 0.58rem;
+  padding: 3px 0;
+  border-bottom: 1px solid #002820;
+  color: #aaeedd;
+}
+.c-arduino-pin span:last-child { color: #00c896; font-weight: 600; }
+
+.c-comp {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  font-size: 0.62rem;
+  min-width: 110px;
+  z-index: 10;
+}
+.c-comp:hover { border-color: #555; }
+.c-comp-name { font-weight: 600; color: #fff; display: block; margin-bottom: 2px; }
+.c-comp-pin  { color: #666; font-size: 0.58rem; }
+
+/* positions */
+#cIR     { left: 30px;  top: 40px; }
+#cBuzz   { left: 30px;  top: 220px; }
+#cLED    { left: 30px;  top: 370px; }
+#cLCD    { right: 30px; top: 50%;   transform: translateY(-50%); }
+
+svg.cwires {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+/* ─── CONN TABLE ────────────────────────────────────────── */
+.conn-table-wrap { margin-top: 2.5rem; overflow-x: auto; }
+.conn-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.conn-table th {
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.7rem 1.2rem;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+.conn-table td {
+  padding: 0.75rem 1.2rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+}
+.conn-table tr:hover td { background: var(--accent-lt); }
+.conn-from { color: var(--text); font-weight: 500; }
+.conn-to   { color: var(--accent); font-weight: 500; }
+.wire-dot  { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+/* ─── SIMULATION ────────────────────────────────────────── */
+#simulation { padding: 7rem 0; background: var(--bg2); }
+
+.sim-card {
+  margin-top: 3.5rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+}
+.sim-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+}
+.sim-topbar-title {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.sim-dots { display: flex; gap: 6px; }
+.sim-dots span { width: 10px; height: 10px; border-radius: 50%; }
+.sd-r { background: #ff5f56; }
+.sd-y { background: #ffbd2e; }
+.sd-g { background: #27c93f; }
+
+.sim-iframe-wrap { position: relative; }
+.sim-iframe-wrap iframe {
+  display: block;
+  width: 100%;
+  height: 480px;
+  border: none;
+}
+.sim-footer {
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.sim-note {
+  font-size: 0.75rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sim-note i { color: var(--accent); }
+.btn-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.7rem 1.6rem;
+  border-radius: 2px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+  text-decoration: none;
+}
+.btn-accent:hover { background: var(--accent-dk); transform: translateY(-1px); }
+
+/* ─── CODE ──────────────────────────────────────────────── */
+#code { padding: 7rem 0; }
+
+.code-card {
+  margin-top: 3.5rem;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+}
+.code-topbar {
+  background: #1e1e1e;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2a2a2a;
+}
+.code-dots { display: flex; gap: 6px; }
+.code-dots span { width: 10px; height: 10px; border-radius: 50%; }
+.cd-r { background: #ff5f56; }
+.cd-y { background: #ffbd2e; }
+.cd-g { background: #27c93f; }
+.code-file {
+  font-family: 'Poppins', monospace;
+  font-size: 0.68rem;
+  color: #666;
+  letter-spacing: 0.05em;
+}
+.copy-btn {
+  font-family: var(--sans);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid #333;
+  color: #666;
+  padding: 0.3rem 0.8rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+.hljs { border-radius: 0; padding: 2rem 2rem; font-size: 0.83rem; line-height: 1.85; }
+
+/* ─── HOW IT WORKS ──────────────────────────────────────── */
+#howitworks { padding: 7rem 0; background: var(--bg2); }
+
+.steps-list {
+  margin-top: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.step {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 2rem;
+  padding: 2.5rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+  transition: background 0.2s;
+}
+.step:first-child { border-top: 1px solid var(--border); }
+.step:hover { background: var(--accent-lt); padding-left: 1rem; padding-right: 1rem; margin: 0 -1rem; }
+.step-num {
+  font-family: var(--serif);
+  font-size: 3rem;
+  font-weight: 300;
+  color: var(--light);
+  line-height: 1;
+  text-align: right;
+  padding-right: 1rem;
+  border-right: 1px solid var(--border);
+}
+.step-body { }
+.step-icon { font-size: 1.2rem; color: var(--accent); margin-bottom: 0.5rem; }
+.step-title { font-size: 1rem; font-weight: 600; margin-bottom: 0.4rem; }
+.step-text { font-size: 0.85rem; color: var(--muted); line-height: 1.75; }
+
+/* ─── APPLICATIONS ──────────────────────────────────────── */
+#applications { padding: 7rem 0; }
+
+.app-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  margin-top: 3.5rem;
+}
+.app-col-title {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+.app-item {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: flex-start;
+}
+.app-item-icon {
+  color: var(--accent);
+  margin-top: 2px;
+  font-size: 0.9rem;
+  width: 20px; flex-shrink: 0;
+}
+.app-item-text { }
+.app-item-name { font-size: 0.88rem; font-weight: 500; }
+.app-item-desc { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+/* ─── FOOTER ────────────────────────────────────────────── */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2.5rem;
+}
+.footer-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.footer-copy {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 300;
+}
+.footer-copy strong { color: var(--text); font-weight: 500; }
+.footer-made {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-style: italic;
+}
+.footer-made span { color: var(--accent); }
+
+/* ─── RESPONSIVE ────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .nav-links { display: none; }
+  .nav-links.open {
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    top: 64px; left: 0; right: 0;
+    background: var(--bg);
+    padding: 1.5rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    gap: 1.2rem;
+  }
+  .nav-hamburger { display: block; }
+
+  .hero-sub-row { flex-direction: column; gap: 1.5rem; }
+  .hero-stats { gap: 1.5rem; flex-wrap: wrap; }
+
+  .overview-grid { grid-template-columns: 1fr; gap: 3rem; }
+  .comp-grid { grid-template-columns: 1fr 1fr; }
+  .app-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+
+  .step { grid-template-columns: 50px 1fr; gap: 1.2rem; }
+}
+
+@media (max-width: 560px) {
+  .container { padding: 0 1.5rem; }
+  .comp-grid { grid-template-columns: 1fr; }
+  .hero-heading { font-size: 2.8rem; }
+  .hero-stats { gap: 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ NAV ═════════════════════════════════════════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#hero" class="nav-logo">IR Alert System</a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#overview">Overview</a></li>
+      <li><a href="#components">Components</a></li>
+      <li><a href="#circuit">Circuit</a></li>
+      <li><a href="#simulation">Simulation</a></li>
+      <li><a href="#code">Code</a></li>
+      <li><a href="#howitworks">How It Works</a></li>
+      <li><a href="#applications">Applications</a></li>
+    </ul>
+    <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+
+<!-- ═══ HERO ════════════════════════════════════════════════ -->
+<header id="hero">
+  <div class="hero-body">
+    <p class="hero-eyebrow">Mini Project — Electronics & Embedded Systems</p>
+    <h1 class="hero-heading">
+      IR Obstacle<br>
+      <span class="thin"><em>Detection</em> &amp;</span><br>
+      Alert System
+    </h1>
+    <div class="hero-sub-row">
+      <p class="hero-subtitle">Mini Project &nbsp;|&nbsp; Real-time Proximity Alert</p>
+      <p class="hero-tagline">
+        <strong>Based on Arduino — Designed for Safety</strong>
+        An infrared sensing system that detects objects and triggers instant audible, visual, and display feedback.
+      </p>
+    </div>
+  </div>
+  <div class="container">
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">5V</div>
+        <div class="hero-stat-lbl">Supply Voltage</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">D7</div>
+        <div class="hero-stat-lbl">IR Sensor Pin</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">I²C</div>
+        <div class="hero-stat-lbl">LCD Protocol</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">200ms</div>
+        <div class="hero-stat-lbl">Loop Delay</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">3</div>
+        <div class="hero-stat-lbl">Alert Modes</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ OVERVIEW ════════════════════════════════════════════ -->
+<section id="overview">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">01 &nbsp; Overview</span>
+      <h2 class="section-title">How the system<br><em>detects & reacts</em></h2>
+    </div>
+    <div class="overview-grid">
+      <div class="overview-desc reveal">
+        <p>
+          This project implements a <strong>real-time obstacle detection system</strong> using an infrared sensor module (FC-51) paired with an Arduino Uno microcontroller. When an object enters the sensing range, the system immediately triggers multi-modal alerts.
+        </p>
+        <p>
+          The <strong>FC-51 IR module</strong> emits modulated infrared light through its built-in IR LED. The integrated photodiode receiver picks up the reflected signal when an obstacle is present — pulling the digital output pin to <strong>LOW</strong> (active-low logic).
+        </p>
+        <p>
+          The Arduino firmware reads this signal every 200 milliseconds and activates a <strong>passive buzzer</strong>, an <strong>LED indicator</strong>, and updates a <strong>16×2 I2C LCD</strong> with the current status — either "Obstacle Detected!" or "No Obstacle."
+        </p>
+      </div>
+      <div class="tech-stack reveal">
+        <p class="tech-label-top">Core Technologies</p>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-microchip"></i></div>
+          <div>
+            <div class="tech-name">Arduino Uno</div>
+            <div class="tech-desc">ATmega328P microcontroller, 5V logic</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-eye"></i></div>
+          <div>
+            <div class="tech-name">IR Sensor FC-51</div>
+            <div class="tech-desc">Digital output, active-low, adjustable range</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-desktop"></i></div>
+          <div>
+            <div class="tech-name">16×2 I2C LCD</div>
+            <div class="tech-desc">LiquidCrystal_I2C library, address 0x27</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-volume-up"></i></div>
+          <div>
+            <div class="tech-name">Passive Buzzer</div>
+            <div class="tech-desc">Audible alert on obstacle detection</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-circle"></i></div>
+          <div>
+            <div class="tech-name">LED + 220Ω Resistor</div>
+            <div class="tech-desc">Visual indicator, current-limited</div>
+          </div>
+        </div>
+        <div class="tech-item">
+          <div class="tech-icon"><i class="fas fa-code-branch"></i></div>
+          <div>
+            <div class="tech-name">Arduino C++</div>
+            <div class="tech-desc">Wire.h + LiquidCrystal_I2C.h libraries</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMPONENTS ═══════════════════════════════════════════ -->
+<section id="components">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">02 &nbsp; Components</span>
+      <h2 class="section-title">Parts &amp; <em>Materials</em></h2>
+    </div>
+    <div class="comp-grid reveal">
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-microchip"></i></div>
+        <div class="comp-card-name">Arduino Uno</div>
+        <div class="comp-card-detail">ATmega328P · 14 digital I/O pins · USB-B</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-eye"></i></div>
+        <div class="comp-card-name">IR Sensor Module</div>
+        <div class="comp-card-detail">FC-51 / TCRT5000 · Digital output · 3 pins</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-volume-up"></i></div>
+        <div class="comp-card-name">Passive Buzzer</div>
+        <div class="comp-card-detail">5V operating · PWM or digital drive</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-circle"></i></div>
+        <div class="comp-card-name">5mm LED + Resistor</div>
+        <div class="comp-card-detail">Any color · 220Ω current-limiting resistor</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-desktop"></i></div>
+        <div class="comp-card-name">I²C LCD 16×2</div>
+        <div class="comp-card-detail">Address 0x27 · 4-pin I2C backpack module</div>
+      </div>
+      <div class="comp-card">
+        <div class="comp-card-icon"><i class="fas fa-project-diagram"></i></div>
+        <div class="comp-card-name">Breadboard &amp; Wires</div>
+        <div class="comp-card-detail">Half-size breadboard · Male-to-male jumpers</div>
+      </div>
+    </div>
+    <p style="margin-top:1.5rem; font-size:0.72rem; color:var(--muted); text-align:right; letter-spacing:0.05em;">
+      <i class="fas fa-map-marker-alt" style="color:var(--accent);margin-right:4px;"></i>Based in your lab / workspace
+    </p>
+  </div>
+</section>
+
+<!-- ═══ CIRCUIT ══════════════════════════════════════════════ -->
+<section id="circuit">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">03 &nbsp; Circuit Diagram</span>
+      <h2 class="section-title">Wiring &amp; <em>Connectivity</em></h2>
+    </div>
+
+    <div class="circuit-visual reveal">
+      <div class="circuit-inner" id="circuitInner">
+        <!-- SVG wires -->
+        <svg class="cwires" id="cwires"></svg>
+
+        <!-- Arduino -->
+        <div class="c-node c-arduino" id="cArduino">
+          <div class="c-arduino-title">Arduino Uno</div>
+          <div class="c-arduino-pin"><span>5V</span><span>5V</span></div>
+          <div class="c-arduino-pin"><span>GND</span><span>GND</span></div>
+          <div class="c-arduino-pin"><span>IR Signal</span><span>D7</span></div>
+          <div class="c-arduino-pin"><span>Buzzer +</span><span>D8</span></div>
+          <div class="c-arduino-pin"><span>LED Anode</span><span>D13</span></div>
+          <div class="c-arduino-pin"><span>SDA</span><span>A4</span></div>
+          <div class="c-arduino-pin"><span>SCL</span><span>A5</span></div>
+        </div>
+
+        <!-- Left components -->
+        <div class="c-node c-comp" id="cIR">
+          <span class="c-comp-name"><i class="fas fa-eye" style="color:#3a9;margin-right:4px;"></i> IR Sensor</span>
+          <span class="c-comp-pin">VCC · GND · OUT</span>
+        </div>
+        <div class="c-node c-comp" id="cBuzz">
+          <span class="c-comp-name"><i class="fas fa-volume-up" style="color:#9a3;margin-right:4px;"></i> Buzzer</span>
+          <span class="c-comp-pin">+ → D8 · − → GND</span>
+        </div>
+        <div class="c-node c-comp" id="cLED">
+          <span class="c-comp-name"><i class="fas fa-circle" style="color:#e74;margin-right:4px;"></i> LED + 220Ω</span>
+          <span class="c-comp-pin">Anode → D13 · Cathode → GND</span>
+        </div>
+
+        <!-- Right component -->
+        <div class="c-node c-comp" id="cLCD" style="right:30px; top:50%; transform:translateY(-50%); min-width:130px;">
+          <span class="c-comp-name"><i class="fas fa-desktop" style="color:#93f;margin-right:4px;"></i> I²C LCD</span>
+          <span class="c-comp-pin">VCC · GND · SDA(A4) · SCL(A5)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Connections table -->
+    <div class="conn-table-wrap reveal">
+      <table class="conn-table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Pin / Terminal</th>
+            <th>Arduino Pin</th>
+            <th>Wire</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>IR Sensor (FC-51)</td><td class="conn-from">VCC</td><td class="conn-to">5V</td><td><span class="wire-dot" style="background:#e44;"></span>Red</td></tr>
+          <tr><td>IR Sensor (FC-51)</td><td class="conn-from">GND</td><td class="conn-to">GND</td><td><span class="wire-dot" style="background:#333;"></span>Black</td></tr>
+          <tr><td>IR Sensor (FC-51)</td><td class="conn-from">OUT (Digital)</td><td class="conn-to">D7</td><td><span class="wire-dot" style="background:#4af;"></span>Blue</td></tr>
+          <tr><td>Passive Buzzer</td><td class="conn-from">Positive (+)</td><td class="conn-to">D8</td><td><span class="wire-dot" style="background:#4e4;"></span>Green</td></tr>
+          <tr><td>Passive Buzzer</td><td class="conn-from">Negative (−)</td><td class="conn-to">GND</td><td><span class="wire-dot" style="background:#333;"></span>Black</td></tr>
+          <tr><td>LED (5mm)</td><td class="conn-from">Anode → 220Ω</td><td class="conn-to">D13</td><td><span class="wire-dot" style="background:#e84;"></span>Orange</td></tr>
+          <tr><td>LED (5mm)</td><td class="conn-from">Cathode</td><td class="conn-to">GND</td><td><span class="wire-dot" style="background:#333;"></span>Black</td></tr>
+          <tr><td>16×2 I2C LCD</td><td class="conn-from">VCC</td><td class="conn-to">5V</td><td><span class="wire-dot" style="background:#e44;"></span>Red</td></tr>
+          <tr><td>16×2 I2C LCD</td><td class="conn-from">GND</td><td class="conn-to">GND</td><td><span class="wire-dot" style="background:#333;"></span>Black</td></tr>
+          <tr><td>16×2 I2C LCD</td><td class="conn-from">SDA</td><td class="conn-to">A4</td><td><span class="wire-dot" style="background:#a4f;"></span>Purple</td></tr>
+          <tr><td>16×2 I2C LCD</td><td class="conn-from">SCL</td><td class="conn-to">A5</td><td><span class="wire-dot" style="background:#ff6;"></span>Yellow</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ SIMULATION ═══════════════════════════════════════════ -->
+<section id="simulation">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">04 &nbsp; Live Simulation</span>
+      <h2 class="section-title">Wokwi <em>Online Simulator</em></h2>
+    </div>
+    <div class="sim-card reveal">
+      <div class="sim-topbar">
+        <span class="sim-topbar-title"><i class="fas fa-play-circle" style="color:var(--accent);margin-right:6px;"></i>Wokwi Simulator — IR Obstacle Detection</span>
+        <div class="sim-dots">
+          <span class="sd-r"></span><span class="sd-y"></span><span class="sd-g"></span>
+        </div>
+      </div>
+      <div class="sim-iframe-wrap">
+        <iframe
+          src="https://wokwi.com/projects/457099733760931841"
+          title="IR Obstacle Detection Wokwi Simulation"
+          allowfullscreen
+          loading="lazy">
+        </iframe>
+      </div>
+      <div class="sim-footer">
+        <p class="sim-note">
+          <i class="fas fa-info-circle"></i>
+          Click <strong>"Start Simulation"</strong> inside the frame to run the project. Replace the <code>src</code> URL with your own Wokwi project link.
+        </p>
+        <a href="https://wokwi.com/projects/457099733760931841" target="_blank" class="btn-accent">
+          <i class="fas fa-external-link-alt"></i> Open in Wokwi
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CODE ═════════════════════════════════════════════════ -->
+<section id="code">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">05 &nbsp; Source Code</span>
+      <h2 class="section-title">Arduino <em>Firmware</em></h2>
+    </div>
+    <div class="code-card reveal">
+      <div class="code-topbar">
+        <div class="code-dots"><span class="cd-r"></span><span class="cd-y"></span><span class="cd-g"></span></div>
+        <span class="code-file">obstacle_detection.ino</span>
+        <button class="copy-btn" id="copyBtn"><i class="fas fa-copy"></i> Copy</button>
+      </div>
+      <pre><code class="language-arduino" id="theCode">#include &lt;Wire.h&gt;
+#include &lt;LiquidCrystal_I2C.h&gt;
+
+// ─── Pin Definitions ──────────────────────────────────────
+#define IR_SENSOR 7    // FC-51 digital output → Arduino D7
+#define BUZZER    8    // Passive buzzer positive → D8
+#define LED       13   // LED anode (via 220Ω resistor) → D13
+
+// ─── LCD Initialisation (I2C address 0x27, 16 cols, 2 rows)
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ─── Setup ────────────────────────────────────────────────
+void setup() {
+  pinMode(IR_SENSOR, INPUT);
+  pinMode(BUZZER,    OUTPUT);
+  pinMode(LED,       OUTPUT);
+
+  // Initialise and display splash message on LCD
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("IR Obstacle Alert");
+  delay(2000);
+  lcd.clear();
+}
+
+// ─── Main Loop ────────────────────────────────────────────
+void loop() {
+  // Most FC-51 modules are active-LOW: LOW = obstacle present
+  int obstacle = digitalRead(IR_SENSOR);
+
+  if (obstacle == LOW) {
+    // ── Obstacle detected ──────────────────────────────────
+    lcd.setCursor(0, 0);
+    lcd.print("Obstacle Detected!");
+    digitalWrite(BUZZER, HIGH);   // Buzzer ON
+    digitalWrite(LED,    HIGH);   // LED ON
+  } else {
+    // ── Path clear ────────────────────────────────────────
+    lcd.setCursor(0, 0);
+    lcd.print("No Obstacle      ");  // trailing spaces clear old text
+    digitalWrite(BUZZER, LOW);    // Buzzer OFF
+    digitalWrite(LED,    LOW);    // LED OFF
+  }
+
+  delay(200);  // 200 ms loop delay — avoids LCD flicker
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═════════════════════════════════════════ -->
+<section id="howitworks">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">06 &nbsp; Principle</span>
+      <h2 class="section-title">How it <em>works</em></h2>
+    </div>
+    <div class="steps-list">
+      <div class="step reveal">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-icon"><i class="fas fa-broadcast-tower"></i></div>
+          <div class="step-title">Infrared Emission</div>
+          <p class="step-text">The FC-51 module's built-in IR LED continuously emits modulated infrared light at ~850 nm. This invisible beam projects forward from the sensor face, creating a detection zone adjustable via the onboard potentiometer.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-icon"><i class="fas fa-wave-square"></i></div>
+          <div class="step-title">Reflection &amp; Detection</div>
+          <p class="step-text">When a solid object enters the sensing range, the IR light reflects back toward the module. The integrated photodiode receiver detects this reflected energy. The onboard LM393 comparator evaluates the signal strength against a threshold set by the potentiometer.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-icon"><i class="fas fa-code"></i></div>
+          <div class="step-title">Digital Signal Output</div>
+          <p class="step-text">The comparator drives the OUT pin LOW when an obstacle is detected (active-low logic) and HIGH when the path is clear. This clean digital signal is read directly by the Arduino on digital pin D7 using <code style="font-family:monospace;background:var(--border);padding:1px 5px;border-radius:2px;">digitalRead()</code>.</p>
+        </div>
+      </div>
+      <div class="step reveal">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <div class="step-icon"><i class="fas fa-bell"></i></div>
+          <div class="step-title">Alert Activation</div>
+          <p class="step-text">Upon detecting a LOW signal, the Arduino firmware simultaneously drives D8 HIGH (buzzer), D13 HIGH (LED), and writes "Obstacle Detected!" to the I2C LCD. All three alerts deactivate instantly when the obstacle is removed — with a 200 ms polling loop to prevent display flicker.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ APPLICATIONS ═════════════════════════════════════════ -->
+<section id="applications">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">07 &nbsp; Applications &amp; Future</span>
+      <h2 class="section-title">Real-world use &amp; <em>Improvements</em></h2>
+    </div>
+    <div class="app-grid reveal">
+      <!-- Real-world applications -->
+      <div>
+        <p class="app-col-title"><i class="fas fa-globe" style="margin-right:6px;color:var(--accent);"></i>Real-World Applications</p>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-robot"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Robotics Obstacle Avoidance</div>
+            <div class="app-item-desc">Prevents robots and autonomous vehicles from colliding with objects.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-door-closed"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Automatic Door Systems</div>
+            <div class="app-item-desc">Detects approaching persons to trigger door opening mechanisms.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-industry"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Industrial Conveyor Safety</div>
+            <div class="app-item-desc">Stops conveyor belts when foreign objects or hands are detected.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-car"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Parking Assist Systems</div>
+            <div class="app-item-desc">Provides proximity warnings when reversing in tight spaces.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-wheelchair"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Assistive Mobility Devices</div>
+            <div class="app-item-desc">Alerts visually impaired users of obstacles in walking paths.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Future upgrades -->
+      <div>
+        <p class="app-col-title"><i class="fas fa-rocket" style="margin-right:6px;color:var(--accent);"></i>Possible Improvements</p>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-wifi"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">IoT Integration (ESP8266/ESP32)</div>
+            <div class="app-item-desc">Send real-time alerts over Wi-Fi to a mobile app or dashboard.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-ruler-combined"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Ultrasonic Distance Measurement</div>
+            <div class="app-item-desc">Add HC-SR04 for precise centimeter-level distance readings.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-music"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Variable Buzzer Frequency</div>
+            <div class="app-item-desc">Use tone() to vary alarm pitch based on obstacle proximity.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-database"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Event Logging via Serial</div>
+            <div class="app-item-desc">Log timestamped detection events to Serial Monitor or SD card.</div>
+          </div>
+        </div>
+        <div class="app-item">
+          <div class="app-item-icon"><i class="fas fa-battery-three-quarters"></i></div>
+          <div class="app-item-text">
+            <div class="app-item-name">Battery-Powered Portable Mode</div>
+            <div class="app-item-desc">Optimize with sleep modes for deployment on mobile platforms.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-inner">
+    <p class="footer-copy">&copy; 2025 <strong>Jaijal George</strong> — IR Obstacle Detection &amp; Alert System</p>
+    <p class="footer-made">Made in <span>HTML / CSS</span></p>
+  </div>
+</footer>
+
+<!-- ═══ SCRIPTS ══════════════════════════════════════════════ -->
+<script>
+  // ── Highlight.js
+  document.addEventListener('DOMContentLoaded', () => {
+    hljs.highlightAll();
+  });
+
+  // ── Nav hamburger
+  const ham = document.getElementById('hamburger');
+  const navLinks = document.getElementById('navLinks');
+  ham.addEventListener('click', () => {
+    navLinks.classList.toggle('open');
+  });
+  navLinks.querySelectorAll('a').forEach(a => {
+    a.addEventListener('click', () => navLinks.classList.remove('open'));
+  });
+
+  // ── Scroll reveal
+  const revEls = document.querySelectorAll('.reveal');
+  const revObs = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 70);
+        revObs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  revEls.forEach(el => revObs.observe(el));
+
+  // ── Copy code button
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    const raw = `#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+#define IR_SENSOR 7
+#define BUZZER    8
+#define LED       13
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+void setup() {
+  pinMode(IR_SENSOR, INPUT);
+  pinMode(BUZZER,    OUTPUT);
+  pinMode(LED,       OUTPUT);
+  lcd.init();
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("IR Obstacle Alert");
+  delay(2000);
+  lcd.clear();
+}
+
+void loop() {
+  int obstacle = digitalRead(IR_SENSOR);
+  if (obstacle == LOW) {
+    lcd.setCursor(0, 0);
+    lcd.print("Obstacle Detected!");
+    digitalWrite(BUZZER, HIGH);
+    digitalWrite(LED,    HIGH);
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("No Obstacle      ");
+    digitalWrite(BUZZER, LOW);
+    digitalWrite(LED,    LOW);
+  }
+  delay(200);
+}`;
+    navigator.clipboard.writeText(raw).then(() => {
+      this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+      this.style.borderColor = '#3a6b6b';
+      this.style.color = '#3a6b6b';
+      setTimeout(() => {
+        this.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        this.style.borderColor = '';
+        this.style.color = '';
+      }, 2200);
+    });
+  });
+
+  // ── Draw SVG wires in circuit diagram
+  function drawWires() {
+    const svg = document.getElementById('cwires');
+    const container = document.getElementById('circuitInner');
+    if (!svg || !container) return;
+    svg.innerHTML = '';
+
+    const cr = container.getBoundingClientRect();
+    const ard = document.getElementById('cArduino');
+    const ir  = document.getElementById('cIR');
+    const bz  = document.getElementById('cBuzz');
+    const led = document.getElementById('cLED');
+    const lcd = document.getElementById('cLCD');
+
+    function rel(el) {
+      const r = el.getBoundingClientRect();
+      return {
+        cx: r.left - cr.left + r.width / 2,
+        cy: r.top  - cr.top  + r.height / 2,
+        lx: r.left - cr.left,
+        rx: r.left - cr.left + r.width,
+        ty: r.top  - cr.top,
+        by: r.top  - cr.top  + r.height,
+      };
+    }
+
+    const a = rel(ard);
+
+    function wire(x1, y1, x2, y2, color) {
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const mx = (x1 + x2) / 2;
+      path.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', '1.5');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('opacity', '0.65');
+      path.setAttribute('stroke-dasharray', '3 3');
+      svg.appendChild(path);
+      // Endpoint dot
+      [x1,y1,x2,y2].forEach((v,i,arr) => {
+        if (i % 2 === 0) {
+          const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          c.setAttribute('cx', arr[i]);   c.setAttribute('cy', arr[i+1]);
+          c.setAttribute('r', '3');       c.setAttribute('fill', color);
+          c.setAttribute('opacity', '0.8');
+          svg.appendChild(c);
+        }
+      });
+    }
+
+    const els = [
+      { el: ir,  color: '#38aadd' },
+      { el: bz,  color: '#77cc44' },
+      { el: led, color: '#ee6633' },
+      { el: lcd, color: '#aa66ff' },
+    ];
+
+    els.forEach(({ el, color }) => {
+      if (!el) return;
+      const c = rel(el);
+      if (c.cx < a.cx) wire(c.rx, c.cy, a.lx, a.cy, color);
+      else              wire(a.rx, a.cy, c.lx, c.cy, color);
+    });
+  }
+
+  window.addEventListener('load', () => setTimeout(drawWires, 300));
+  window.addEventListener('resize', drawWires);
+</script>
+</body>
+</html>
